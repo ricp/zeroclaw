@@ -38,10 +38,12 @@ _ensure_bash() {
   else echo "error: unsupported package manager; install bash manually and retry." >&2; exit 1; fi
 }
 
-# If not already running under bash, ensure bash exists and re-exec.
-if [ -z "${BASH_VERSION:-}" ]; then
+# Ensure we run under full bash semantics exactly once.
+# On some systems `sh` is bash in POSIX mode, which breaks bash-only features
+# used by this installer (arrays, echo -e behavior under our formatting helpers).
+if [ -z "${ZEROCLAW_INSTALLER_BASH_EXEC:-}" ]; then
   _ensure_bash
-  exec bash "$0" "$@"
+  ZEROCLAW_INSTALLER_BASH_EXEC=1 exec bash "$0" "$@"
 fi
 
 # --- From here on, we are running under bash ---
@@ -1299,7 +1301,7 @@ if [[ "$SKIP_BUILD" == false ]]; then
   fi
 
   step_dot "Building release binary"
-  cargo build --release --locked "${CARGO_FEATURE_ARGS[@]}"
+  cargo build --release --locked "${CARGO_FEATURE_ARGS[@]+"${CARGO_FEATURE_ARGS[@]}"}"
   step_ok "Release binary built"
 else
   step_dot "Skipping build"
@@ -1318,7 +1320,7 @@ if [[ "$SKIP_INSTALL" == false ]]; then
     fi
   fi
 
-  cargo install --path "$WORK_DIR" --force --locked "${CARGO_FEATURE_ARGS[@]}"
+  cargo install --path "$WORK_DIR" --force --locked "${CARGO_FEATURE_ARGS[@]+"${CARGO_FEATURE_ARGS[@]}"}"
   step_ok "ZeroClaw installed"
 
   # Sync binary to ~/.local/bin so PATH lookups find the fresh version
